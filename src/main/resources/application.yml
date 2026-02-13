@@ -1,0 +1,56 @@
+# MobAI Warehouse Backend Configuration
+spring:
+  application:
+    name: mobai-warehouse-backend
+
+  # Database Configuration (MySQL via XAMPP)
+  datasource:
+    url: jdbc:mysql://localhost:3306/mobai_warehouse?useSSL=false&serverTimezone=UTC&allowPublicKeyRetrieval=true&createDatabaseIfNotExist=true
+    driver-class-name: com.mysql.cj.jdbc.Driver
+    username: root
+    password:
+
+  # SQL initialization (disabled - seeding handled by DataSeeder component)
+  sql:
+    init:
+      mode: never
+
+  # JPA Configuration
+  jpa:
+    hibernate:
+      ddl-auto: update
+    show-sql: true
+    properties:
+      hibernate:
+        format_sql: true
+    open-in-view: false
+
+  # Security
+  security:
+    jwt:
+      secret-key: 404E635266556A586E3272357538782F413F4428472B4B6250645367566B5970
+      expiration: 86400000 # 24 hours
+      refresh-expiration: 604800000 # 7 days
+
+# Server Configuration
+server:
+  port: 8080
+  servlet:
+    context-path: /api
+
+# Logging
+logging:
+  level:
+    org.springframework.security: DEBUG
+    org.example.backend: DEBUG
+    org.hibernate.SQL: DEBUG
+
+# Management endpoints
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics
+  endpoint:
+    health:
+      show-details: always

@@ -1,0 +1,496 @@
+# MobAI Warehouse Backend - API Test Collection
+# Base URL: http://localhost:8080/api
+# Make sure the application is running before testing these endpoints
+
+### Variables
+@baseUrl = http://localhost:8080/api
+@token = your_jwt_token_here
+@refreshToken = your_refresh_token_here
+@orderId = 00000000-0000-0000-0000-000000000000
+@assignedWorkerId = employee1
+
+########################################
+# AUTHENTICATION ENDPOINTS
+########################################
+
+### 1. Test Auth System
+GET {{baseUrl}}/auth/test
+Content-Type: application/json
+
+### 2. Register New User (Admin)
+POST {{baseUrl}}/auth/register
+Content-Type: application/json
+
+{
+  "username": "admin",
+  "email": "admin@mobai.com",
+  "password": "admin123",
+  "firstName": "Admin",
+  "lastName": "User",
+  "role": "ADMIN"
+}
+
+### 3. Register New User (Supervisor) 
+POST {{baseUrl}}/auth/register
+Content-Type: application/json
+
+{
+  "username": "supervisor1",
+  "email": "supervisor@mobai.com",
+  "password": "supervisor123",
+  "firstName": "John",
+  "lastName": "Supervisor",
+  "role": "SUPERVISOR"
+}
+
+### 4. Register New User (Employee)
+POST {{baseUrl}}/auth/register
+Content-Type: application/json
+
+{
+  "username": "employee1",
+  "email": "employee@mobai.com",
+  "password": "employee123",
+  "firstName": "Jane",
+  "lastName": "Employee",
+  "role": "EMPLOYEE"
+}
+
+### 5. Login with Username
+POST {{baseUrl}}/auth/login
+Content-Type: application/json
+
+{
+  "login": "admin",
+  "password": "admin123"
+}
+
+### 6. Login with Email
+POST {{baseUrl}}/auth/login
+Content-Type: application/json
+
+{
+  "login": "admin@mobai.com",
+  "password": "admin123"
+}
+
+### 7. Refresh Token
+POST {{baseUrl}}/auth/refresh
+Content-Type: application/json
+
+{
+  "refreshToken": "{{refreshToken}}"
+}
+
+### 8. Logout
+POST {{baseUrl}}/auth/logout
+Content-Type: application/json
+Authorization: Bearer {{token}}
+
+########################################
+# TEST ENDPOINTS
+########################################
+
+### 9. Hello Test
+GET {{baseUrl}}/test/hello
+Content-Type: application/json
+
+### 10. Health Check
+GET {{baseUrl}}/test/health
+Content-Type: application/json
+
+########################################
+# ORDER ENDPOINTS
+########################################
+
+### 11. Get All Orders (Paginated)
+GET {{baseUrl}}/orders?page=0&size=20&sortBy=taskId&direction=asc
+Content-Type: application/json
+Authorization: Bearer eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJlbXBsb3llZTEiLCJpYXQiOjE3NzA5NTc0NjIsImV4cCI6MTc3MTA0Mzg2Mn0.KOspm6kQCrsnyrPNQiTles9x5Awfcblsp8_de53j6RQ
+
+### 12. Get Orders by Assigned Worker ID
+GET {{baseUrl}}/orders/employee/{{assignedWorkerId}}?page=0&size=20&sortBy=taskId&direction=asc
+Content-Type: application/json
+Authorization: Bearer eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJlbXBsb3llZTEiLCJpYXQiOjE3NzA5NTc0NjIsImV4cCI6MTc3MTA0Mzg2Mn0.KOspm6kQCrsnyrPNQiTles9x5Awfcblsp8_de53j6RQ
+
+### 13. Get Order by Task ID
+GET {{baseUrl}}/orders/{{orderId}}
+Content-Type: application/json
+Authorization: Bearer {{token}}
+
+### 14. Create Order
+POST {{baseUrl}}/orders
+Content-Type: application/json
+Authorization: Bearer {{token}}
+
+{
+  "packageId": "PKG-NEW-2001",
+  "weightKg": 9.4,
+  "fragile": false,
+  "fromLocation": "RECV-Z1",
+  "toLocation": "RACK-Z9",
+  "transferPath": ["RECV-Z1", "AISLE-Z", "RACK-Z9"],
+  "assignedWorkerId": "employee1",
+  "status": "created",
+  "scanStep": 0
+}
+
+### 15. Update Order
+PUT {{baseUrl}}/orders/{{orderId}}
+Content-Type: application/json
+Authorization: Bearer {{token}}
+
+{
+  "packageId": "PKG-NEW-2001",
+  "weightKg": 9.4,
+  "fragile": false,
+  "fromLocation": "RECV-Z1",
+  "toLocation": "RACK-Z9",
+  "transferPath": ["RECV-Z1", "QC-ZONE", "RACK-Z9"],
+  "assignedWorkerId": "employee1",
+  "status": "picked",
+  "scanStep": 2
+}
+
+### 16. Delete Order
+DELETE {{baseUrl}}/orders/{{orderId}}
+Content-Type: application/json
+Authorization: Bearer {{token}}
+
+########################################
+# PRODUCT ENDPOINTS (Future Implementation)
+########################################
+
+### 17. Get All Products
+GET {{baseUrl}}/products
+Content-Type: application/json
+Authorization: Bearer {{token}}
+
+### 18. Get Product by ID
+GET {{baseUrl}}/products/1
+Content-Type: application/json
+Authorization: Bearer {{token}}
+
+### 19. Create Product
+POST {{baseUrl}}/products
+Content-Type: application/json
+Authorization: Bearer {{token}}
+
+{
+  "name": "Sample Product",
+  "description": "A sample product for testing",
+  "sku": "SP001",
+  "barcode": "1234567890123",
+  "price": 29.99,
+  "category": "Electronics",
+  "minStockLevel": 10,
+  "maxStockLevel": 100
+}
+
+### 20. Update Product
+PUT {{baseUrl}}/products/1
+Content-Type: application/json
+Authorization: Bearer {{token}}
+
+{
+  "name": "Updated Product",
+  "description": "Updated product description",
+  "sku": "SP001",
+  "barcode": "1234567890123",
+  "price": 39.99,
+  "category": "Electronics",
+  "minStockLevel": 15,
+  "maxStockLevel": 150
+}
+
+### 21. Delete Product
+DELETE {{baseUrl}}/products/1
+Content-Type: application/json
+Authorization: Bearer {{token}}
+
+########################################
+# INVENTORY ENDPOINTS (Future Implementation)
+########################################
+
+### 22. Get Inventory Overview
+GET {{baseUrl}}/inventory
+Content-Type: application/json
+Authorization: Bearer {{token}}
+
+### 23. Get Product Stock
+GET {{baseUrl}}/inventory/product/1
+Content-Type: application/json
+Authorization: Bearer {{token}}
+
+### 24. Get Stock by Location
+GET {{baseUrl}}/inventory/location/1
+Content-Type: application/json
+Authorization: Bearer {{token}}
+
+### 25. Adjust Stock
+POST {{baseUrl}}/inventory/adjust
+Content-Type: application/json
+Authorization: Bearer {{token}}
+
+{
+  "productId": 1,
+  "locationId": 1,
+  "quantity": 50,
+  "type": "INCREASE",
+  "reason": "Stock replenishment"
+}
+
+########################################
+# LOCATION ENDPOINTS (Future Implementation)
+########################################
+
+### 26. Get All Locations
+GET {{baseUrl}}/locations
+Content-Type: application/json
+Authorization: Bearer {{token}}
+
+### 27. Get Location by ID
+GET {{baseUrl}}/locations/1
+Content-Type: application/json
+Authorization: Bearer {{token}}
+
+### 28. Create Location
+POST {{baseUrl}}/locations
+Content-Type: application/json
+Authorization: Bearer {{token}}
+
+{
+  "name": "A1-01-01",
+  "type": "SHELF",
+  "zone": "A1",
+  "aisle": "01",
+  "shelf": "01",
+  "description": "Top shelf in aisle A1-01",
+  "capacity": 100,
+  "isActive": true
+}
+
+### 29. Update Location
+PUT {{baseUrl}}/locations/1
+Content-Type: application/json
+Authorization: Bearer {{token}}
+
+{
+  "name": "A1-01-01",
+  "type": "SHELF",
+  "zone": "A1",
+  "aisle": "01",
+  "shelf": "01",
+  "description": "Updated shelf description",
+  "capacity": 150,
+  "isActive": true
+}
+
+### 30. Delete Location
+DELETE {{baseUrl}}/locations/1
+Content-Type: application/json
+Authorization: Bearer {{token}}
+
+########################################
+# WAREHOUSE OPERATIONS (Future Implementation)
+########################################
+
+### 31. Receive Stock
+POST {{baseUrl}}/operations/receive
+Content-Type: application/json
+Authorization: Bearer {{token}}
+
+{
+  "productId": 1,
+  "locationId": 1,
+  "quantity": 100,
+  "supplier": "ABC Supplier",
+  "referenceNumber": "PO-2024-001",
+  "notes": "Initial stock receipt"
+}
+
+### 32. Pick Items
+POST {{baseUrl}}/operations/pick
+Content-Type: application/json
+Authorization: Bearer {{token}}
+
+{
+  "items": [
+    {
+      "productId": 1,
+      "locationId": 1,
+      "quantity": 5
+    },
+    {
+      "productId": 2,
+      "locationId": 2,
+      "quantity": 3
+    }
+  ],
+  "orderId": "ORD-2024-001",
+  "notes": "Order picking"
+}
+
+### 33. Transfer Stock
+POST {{baseUrl}}/operations/transfer
+Content-Type: application/json
+Authorization: Bearer {{token}}
+
+{
+  "productId": 1,
+  "fromLocationId": 1,
+  "toLocationId": 2,
+  "quantity": 10,
+  "reason": "Rebalancing stock"
+}
+
+### 34. Delivery
+POST {{baseUrl}}/operations/deliver
+Content-Type: application/json
+Authorization: Bearer {{token}}
+
+{
+  "orderId": "ORD-2024-001",
+  "deliveryAddress": "123 Customer St, City, State 12345",
+  "trackingNumber": "TRK123456789",
+  "notes": "Standard delivery"
+}
+
+########################################
+# AI DECISION ENDPOINTS (Future Implementation)
+########################################
+
+### 35. Get AI Recommendations
+GET {{baseUrl}}/ai/recommendations
+Content-Type: application/json
+Authorization: Bearer {{token}}
+
+### 36. Get AI Decision History
+GET {{baseUrl}}/ai/decisions
+Content-Type: application/json
+Authorization: Bearer {{token}}
+
+### 37. Override AI Decision
+POST {{baseUrl}}/ai/override
+Content-Type: application/json
+Authorization: Bearer {{token}}
+
+{
+  "decisionId": 1,
+  "overrideReason": "Manual adjustment required",
+  "newDecision": "MANUAL_PICK"
+}
+
+### 32. Request AI Analysis
+POST {{baseUrl}}/ai/analyze
+Content-Type: application/json
+Authorization: Bearer {{token}}
+
+{
+  "type": "INVENTORY_OPTIMIZATION",
+  "parameters": {
+    "timeFrame": "30",
+    "products": [1, 2, 3]
+  }
+}
+
+########################################
+# USER MANAGEMENT (Future Implementation)
+########################################
+
+### 33. Get All Users (Admin only)
+GET {{baseUrl}}/users
+Content-Type: application/json
+Authorization: Bearer {{token}}
+
+### 34. Get User Profile
+GET {{baseUrl}}/users/profile
+Content-Type: application/json
+Authorization: Bearer {{token}}
+
+### 35. Update User Profile
+PUT {{baseUrl}}/users/profile
+Content-Type: application/json
+Authorization: Bearer {{token}}
+
+{
+  "firstName": "Updated First",
+  "lastName": "Updated Last",
+  "email": "updated@email.com"
+}
+
+### 36. Change Password
+POST {{baseUrl}}/users/change-password
+Content-Type: application/json
+Authorization: Bearer {{token}}
+
+{
+  "currentPassword": "oldpassword123",
+  "newPassword": "newpassword123"
+}
+
+### 37. Delete User (Admin only)
+DELETE {{baseUrl}}/users/1
+Content-Type: application/json
+Authorization: Bearer {{token}}
+
+########################################
+# DASHBOARD ENDPOINTS (Future Implementation)
+########################################
+
+### 38. Get Dashboard Statistics
+GET {{baseUrl}}/dashboard/stats
+Content-Type: application/json
+Authorization: Bearer {{token}}
+
+### 39. Get Recent Activities
+GET {{baseUrl}}/dashboard/activities
+Content-Type: application/json
+Authorization: Bearer {{token}}
+
+### 40. Get Low Stock Alerts
+GET {{baseUrl}}/dashboard/alerts/low-stock
+Content-Type: application/json
+Authorization: Bearer {{token}}
+
+### 41. Get Performance Metrics
+GET {{baseUrl}}/dashboard/metrics
+Content-Type: application/json
+Authorization: Bearer {{token}}
+
+########################################
+# SPECIAL ENDPOINTS
+########################################
+
+### 42. Database Console (H2 Console - Development only)
+# Open in browser: http://localhost:8080/api/h2-console
+# JDBC URL: jdbc:h2:mem:testdb
+# User: sa
+# Password: password
+
+### 43. API Documentation (Swagger UI - when implemented)
+# Open in browser: http://localhost:8080/api/swagger-ui.html
+
+########################################
+# TESTING SCENARIOS
+########################################
+
+### Scenario 1: Complete User Registration and Login Flow
+# 1. Run "Register New User (Admin)" request
+# 2. Copy the returned JWT token
+# 3. Replace {{token}} variable with the actual token
+# 4. Run other authenticated requests
+
+### Scenario 2: Test Authentication Flow
+# 1. Register a user
+# 2. Login with credentials
+# 3. Use returned token for authenticated requests
+# 4. Test token refresh
+# 5. Logout
+
+### Scenario 3: Error Testing
+# Try these to test error handling:
+# - Login with invalid credentials
+# - Access protected endpoints without token
+# - Register with duplicate username/email
+# - Use invalid/expired tokens
