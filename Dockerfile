@@ -20,19 +20,19 @@ WORKDIR /app
 
 COPY --from=build /app/target/*.jar app.jar
 
-# Render sets PORT env variable
-ENV PORT=8080
+# Render sets PORT env variable (defaults to 10000 on Render)
+ENV PORT=10000
 
 EXPOSE ${PORT}
-EXPOSE 10000
 
 # JVM tuning for Render free tier (512MB RAM)
-ENTRYPOINT ["java", \
-  "-Xmx256m", \
-  "-Xms128m", \
-  "-XX:+UseG1GC", \
-  "-XX:MaxGCPauseMillis=100", \
-  "-Djava.security.egd=file:/dev/./urandom", \
-  "-Dserver.port=${PORT}", \
-  "-Dspring.profiles.active=prod", \
-  "-jar", "app.jar"]
+# Use shell form so ${PORT} is expanded at runtime
+ENTRYPOINT exec java \
+  -Xmx256m \
+  -Xms128m \
+  -XX:+UseG1GC \
+  -XX:MaxGCPauseMillis=100 \
+  -Djava.security.egd=file:/dev/./urandom \
+  -Dserver.port=${PORT} \
+  -Dspring.profiles.active=prod \
+  -jar app.jar
