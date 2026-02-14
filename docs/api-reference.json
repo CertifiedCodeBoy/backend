@@ -1,0 +1,1568 @@
+{
+  "apiInfo": {
+    "title": "MobAi Warehouse Backend API",
+    "version": "1.0.0",
+    "baseUrl": "/api",
+    "description": "Complete API reference for the MobAi Warehouse Management System"
+  },
+  "auth": {
+    "type": "Bearer JWT",
+    "headerName": "Authorization",
+    "headerFormat": "Bearer <token>",
+    "tokenEndpoint": "/api/auth/login",
+    "refreshEndpoint": "/api/auth/refresh"
+  },
+  "roles": {
+    "ADMIN": {
+      "description": "Full access to all features",
+      "permissions": ["product:read", "product:write", "inventory:read", "inventory:write", "location:read", "location:write", "operation:read", "operation:write", "user:read", "user:write", "dashboard:read"]
+    },
+    "SUPERVISOR": {
+      "description": "Can manage operations and view reports, no user management",
+      "permissions": ["product:read", "product:write", "inventory:read", "inventory:write", "location:read", "location:write", "operation:read", "operation:write", "user:read", "dashboard:read"]
+    },
+    "EMPLOYEE": {
+      "description": "Can perform warehouse operations and view data",
+      "permissions": ["product:read", "inventory:read", "operation:read", "operation:write", "dashboard:read"]
+    }
+  },
+  "enums": {
+    "Role": ["ADMIN", "SUPERVISOR", "EMPLOYEE"],
+    "TransactionType": ["RECEIPT", "TRANSFER", "PICKING", "DELIVERY", "ADJUSTMENT"],
+    "TransactionStatus": ["DRAFT", "PENDING", "IN_PROGRESS", "COMPLETED", "CANCELLED", "FAILED"],
+    "TaskType": ["RECEIPT", "TRANSFER", "PICKING", "DELIVERY"],
+    "TaskStatus": ["CREATED", "PICKED", "COMPLETED"],
+    "Priority": ["LOW", "MEDIUM", "HIGH", "URGENT"],
+    "ChariotStatus": ["AVAILABLE", "IN_USE", "MAINTENANCE", "RETIRED"],
+    "LocationType": ["RECEIVING", "STORAGE", "PICKING", "EXPEDITION", "QC", "DAMAGED"],
+    "MovementType": ["IN", "OUT", "ADJUSTMENT"],
+    "IssueType": ["MISSING", "DAMAGED", "EXCESS", "WRONG_LOCATION", "NOT_FOUND", "INSUFFICIENT_STOCK"],
+    "AiDecisionType": ["STORAGE_ASSIGNMENT", "PICKING_ROUTE", "PREPARATION_FORECAST"],
+    "BarcodeType": ["EAN13", "CODE128", "QR", "OTHER"]
+  },
+  "responseWrapper": {
+    "name": "ApiResponse<T>",
+    "description": "ALL endpoints return this wrapper",
+    "fields": {
+      "success": { "type": "boolean" },
+      "message": { "type": "string" },
+      "data": { "type": "T (varies per endpoint)" },
+      "timestamp": { "type": "string (ISO datetime)" },
+      "errorCode": { "type": "string | null" }
+    }
+  },
+  "dtos": {
+    "request": {
+      "LoginRequest": {
+        "fields": {
+          "login": { "type": "string", "required": true, "description": "Username or email" },
+          "password": { "type": "string", "required": true }
+        }
+      },
+      "RegisterRequest": {
+        "fields": {
+          "username": { "type": "string", "required": true, "minLength": 3, "maxLength": 100 },
+          "email": { "type": "string", "required": true, "format": "email", "maxLength": 150 },
+          "password": { "type": "string", "required": true, "minLength": 6 },
+          "firstName": { "type": "string", "maxLength": 100 },
+          "lastName": { "type": "string", "maxLength": 100 },
+          "role": { "type": "Role", "default": "EMPLOYEE" }
+        }
+      },
+      "CreateUserRequest": {
+        "fields": {
+          "username": { "type": "string", "required": true, "minLength": 3, "maxLength": 100 },
+          "password": { "type": "string", "required": true, "minLength": 8 },
+          "firstName": { "type": "string", "required": true, "maxLength": 100 },
+          "lastName": { "type": "string", "maxLength": 100 },
+          "email": { "type": "string", "format": "email", "maxLength": 150 },
+          "role": { "type": "Role", "required": true }
+        }
+      },
+      "UpdateUserRequest": {
+        "fields": {
+          "firstName": { "type": "string", "maxLength": 100 },
+          "lastName": { "type": "string", "maxLength": 100 },
+          "email": { "type": "string", "format": "email", "maxLength": 150 },
+          "role": { "type": "Role" },
+          "active": { "type": "boolean" }
+        }
+      },
+      "ResetPasswordRequest": {
+        "fields": {
+          "newPassword": { "type": "string", "required": true, "minLength": 8 }
+        }
+      },
+      "ProductCreateRequest": {
+        "fields": {
+          "sku": { "type": "string", "required": true, "maxLength": 50 },
+          "name": { "type": "string", "required": true, "maxLength": 200 },
+          "unitOfMeasure": { "type": "string", "required": true, "maxLength": 20 },
+          "category": { "type": "string", "maxLength": 100 },
+          "price": { "type": "number" },
+          "minStock": { "type": "integer" },
+          "maxStock": { "type": "integer" },
+          "colisageFardeau": { "type": "integer", "required": true },
+          "colisagePalette": { "type": "integer" },
+          "volumePcs": { "type": "number", "required": true },
+          "poids": { "type": "number" },
+          "isGerbable": { "type": "boolean" },
+          "barcodes": {
+            "type": "array",
+            "items": {
+              "barcode": { "type": "string", "required": true },
+              "isPrimary": { "type": "boolean", "default": false }
+            }
+          }
+        }
+      },
+      "UpdateProductRequest": {
+        "fields": {
+          "name": { "type": "string" },
+          "category": { "type": "string" },
+          "price": { "type": "number" },
+          "minStock": { "type": "integer" },
+          "maxStock": { "type": "integer" },
+          "colisageFardeau": { "type": "integer" },
+          "colisagePalette": { "type": "integer" },
+          "volumePcs": { "type": "number" },
+          "poids": { "type": "number" },
+          "isGerbable": { "type": "boolean" },
+          "active": { "type": "boolean" }
+        }
+      },
+      "AddBarcodeRequest": {
+        "fields": {
+          "barcode": { "type": "string", "required": true },
+          "isPrimary": { "type": "boolean", "default": false }
+        }
+      },
+      "LocationCreateRequest": {
+        "fields": {
+          "code": { "type": "string", "required": true, "maxLength": 50 },
+          "warehouseId": { "type": "UUID", "required": true },
+          "zone": { "type": "string", "maxLength": 50 },
+          "type": { "type": "LocationType", "required": true },
+          "positionX": { "type": "number" },
+          "positionY": { "type": "number" },
+          "positionZ": { "type": "number", "default": 0.0 }
+        }
+      },
+      "UpdateLocationRequest": {
+        "fields": {
+          "zone": { "type": "string" },
+          "type": { "type": "LocationType" },
+          "positionX": { "type": "number" },
+          "positionY": { "type": "number" },
+          "active": { "type": "boolean" }
+        }
+      },
+      "CreateWarehouseRequest": {
+        "fields": {
+          "code": { "type": "string", "required": true, "maxLength": 20 },
+          "name": { "type": "string", "required": true, "maxLength": 100 },
+          "city": { "type": "string", "maxLength": 100 }
+        }
+      },
+      "UpdateWarehouseRequest": {
+        "fields": {
+          "name": { "type": "string" },
+          "city": { "type": "string" },
+          "active": { "type": "boolean" }
+        }
+      },
+      "CreateChariotRequest": {
+        "fields": {
+          "code": { "type": "string", "required": true, "maxLength": 20 }
+        }
+      },
+      "UpdateChariotRequest": {
+        "fields": {
+          "status": { "type": "ChariotStatus" },
+          "active": { "type": "boolean" }
+        }
+      },
+      "ChariotAssignRequest": {
+        "fields": {
+          "userId": { "type": "UUID", "required": true }
+        }
+      },
+      "AdminCreateTaskRequest": {
+        "fields": {
+          "type": { "type": "TransactionType", "required": true },
+          "priority": { "type": "Priority", "default": "MEDIUM" },
+          "assignedToId": { "type": "UUID" },
+          "chariotId": { "type": "UUID" },
+          "notes": { "type": "string" },
+          "lines": {
+            "type": "array",
+            "required": true,
+            "items": {
+              "productId": { "type": "UUID", "required": true },
+              "quantity": { "type": "integer", "required": true },
+              "sourceLocationId": { "type": "UUID" },
+              "destinationLocationId": { "type": "UUID" }
+            }
+          }
+        }
+      },
+      "UpdateTaskRequest": {
+        "fields": {
+          "assignedToId": { "type": "UUID" },
+          "priority": { "type": "Priority" },
+          "status": { "type": "TransactionStatus" },
+          "notes": { "type": "string" }
+        }
+      },
+      "CreateTaskRequest": {
+        "fields": {
+          "type": { "type": "TransactionType", "required": true },
+          "reference": { "type": "string" },
+          "priority": { "type": "Priority" },
+          "assignedToId": { "type": "UUID" },
+          "notes": { "type": "string" }
+        }
+      },
+      "TaskAssignRequest": {
+        "fields": {
+          "assignedToId": { "type": "UUID", "required": true }
+        }
+      },
+      "StartOperationRequest": {
+        "fields": {
+          "transactionId": { "type": "UUID", "required": true },
+          "chariotId": { "type": "UUID" }
+        }
+      },
+      "ExecuteLineRequest": {
+        "fields": {
+          "transactionId": { "type": "UUID", "required": true },
+          "lineNumber": { "type": "integer", "required": true },
+          "productBarcode": { "type": "string", "required": true },
+          "quantity": { "type": "integer", "required": true },
+          "sourceLocationCode": { "type": "string" },
+          "destinationLocationCode": { "type": "string" }
+        }
+      },
+      "ReportIssueRequest": {
+        "fields": {
+          "transactionId": { "type": "UUID", "required": true },
+          "lineNumber": { "type": "integer" },
+          "productId": { "type": "UUID", "required": true },
+          "issueType": { "type": "string", "required": true },
+          "expectedQuantity": { "type": "integer" },
+          "actualQuantity": { "type": "integer" },
+          "notes": { "type": "string" }
+        }
+      },
+      "CompleteOperationRequest": {
+        "fields": {
+          "notes": { "type": "string" },
+          "status": { "type": "string", "required": true },
+          "failureReason": { "type": "string" }
+        }
+      },
+      "StockAdjustmentRequest": {
+        "fields": {
+          "productId": { "type": "UUID", "required": true },
+          "locationId": { "type": "UUID", "required": true },
+          "adjustmentQuantity": { "type": "integer", "required": true },
+          "reason": { "type": "string", "required": true },
+          "notes": { "type": "string" }
+        }
+      },
+      "AiDecisionOverrideRequest": {
+        "fields": {
+          "newDecision": { "type": "string", "required": true },
+          "reason": { "type": "string", "required": true }
+        }
+      },
+      "ResolveDiscrepancyRequest": {
+        "fields": {
+          "resolution": { "type": "string", "required": true },
+          "notes": { "type": "string" }
+        }
+      },
+      "OrderRequest": {
+        "fields": {
+          "idCommandeAchat": { "type": "string", "required": true },
+          "productId": { "type": "UUID", "required": true },
+          "quantiteCommandee": { "type": "integer", "required": true },
+          "dateReceptionPrevue": { "type": "string", "format": "date (YYYY-MM-DD)", "required": true },
+          "statut": { "type": "string", "default": "OPEN" }
+        }
+      },
+      "ScanRequest": {
+        "fields": {
+          "barcodeData": { "type": "string", "required": true },
+          "scanContext": { "type": "string" }
+        }
+      },
+      "AiForecastRequest": {
+        "jsonFields": true,
+        "fields": {
+          "product_ids": { "type": "array of integers", "required": true },
+          "date": { "type": "string" }
+        }
+      },
+      "AiForecastGenerateRequest": {
+        "jsonFields": true,
+        "fields": {
+          "start_date": { "type": "string", "default": "2026-01-09" },
+          "end_date": { "type": "string", "default": "2026-02-08" },
+          "output_file": { "type": "string", "default": "forecast_submission.csv" }
+        }
+      },
+      "AiStorageRequest": {
+        "jsonFields": true,
+        "fields": {
+          "product_id": { "type": "integer", "required": true },
+          "quantity": { "type": "integer", "required": true },
+          "weight_kg": { "type": "number" }
+        }
+      },
+      "AiPickingRequest": {
+        "jsonFields": true,
+        "fields": {
+          "items": {
+            "type": "array",
+            "required": true,
+            "items": {
+              "product_id": { "type": "integer", "required": true },
+              "quantity": { "type": "integer", "required": true },
+              "location_id": { "type": "integer" }
+            }
+          },
+          "chariot_capacity_kg": { "type": "number", "default": 300.0 },
+          "max_chariots": { "type": "integer", "default": 3 }
+        }
+      },
+      "AiSimulationRequest": {
+        "jsonFields": true,
+        "fields": {
+          "events": {
+            "type": "array",
+            "required": true,
+            "items": {
+              "date": { "type": "string" },
+              "product_id": { "type": "integer" },
+              "quantity": { "type": "integer" },
+              "flow_type": { "type": "string" }
+            }
+          },
+          "reset_state": { "type": "boolean", "default": true }
+        }
+      },
+      "AiExplainRequest": {
+        "jsonFields": true,
+        "fields": {
+          "product_id": { "type": "integer", "required": true },
+          "date": { "type": "string", "required": true }
+        }
+      },
+      "AiPreparationOrderRequest": {
+        "jsonFields": true,
+        "fields": {
+          "date": { "type": "string", "required": true },
+          "override_quantities": { "type": "object (map of integer to number)" }
+        }
+      }
+    },
+    "response": {
+      "AuthResponse": {
+        "fields": {
+          "accessToken": { "type": "string" },
+          "refreshToken": { "type": "string" },
+          "tokenType": { "type": "string", "default": "Bearer" },
+          "expiresIn": { "type": "long (seconds)" },
+          "userId": { "type": "UUID" },
+          "username": { "type": "string" },
+          "email": { "type": "string" },
+          "firstName": { "type": "string" },
+          "lastName": { "type": "string" },
+          "role": { "type": "string" },
+          "fullName": { "type": "string" }
+        }
+      },
+      "OrderResponse": {
+        "fields": {
+          "idCommandeAchat": { "type": "string" },
+          "productId": { "type": "UUID" },
+          "productSku": { "type": "string" },
+          "quantiteCommandee": { "type": "integer" },
+          "dateReceptionPrevue": { "type": "string (date)" },
+          "statut": { "type": "string" }
+        }
+      }
+    }
+  },
+  "endpoints": {
+    "auth": {
+      "basePath": "/api/auth",
+      "description": "Authentication & registration (all public)",
+      "auth": "PUBLIC",
+      "endpoints": [
+        {
+          "method": "POST",
+          "path": "/api/auth/login",
+          "description": "Login with username/email and password",
+          "requestBody": "LoginRequest",
+          "response": "ApiResponse<AuthResponse>"
+        },
+        {
+          "method": "POST",
+          "path": "/api/auth/register",
+          "description": "Register a new user account",
+          "requestBody": "RegisterRequest",
+          "response": "ApiResponse<AuthResponse>",
+          "statusCode": 201
+        },
+        {
+          "method": "POST",
+          "path": "/api/auth/refresh",
+          "description": "Refresh an expired access token",
+          "queryParams": {
+            "refreshToken": { "type": "string", "required": true }
+          },
+          "response": "ApiResponse<AuthResponse>"
+        },
+        {
+          "method": "POST",
+          "path": "/api/auth/logout",
+          "description": "Logout and invalidate token",
+          "headers": {
+            "Authorization": "Bearer <token>"
+          },
+          "response": "ApiResponse<String>"
+        },
+        {
+          "method": "GET",
+          "path": "/api/auth/test",
+          "description": "Test if auth service is running",
+          "response": "ApiResponse<String>"
+        }
+      ]
+    },
+    "test": {
+      "basePath": "/api/test",
+      "description": "Health check endpoints (public)",
+      "auth": "PUBLIC",
+      "endpoints": [
+        {
+          "method": "GET",
+          "path": "/api/test/hello",
+          "description": "Simple hello test",
+          "response": "ApiResponse<String>"
+        },
+        {
+          "method": "GET",
+          "path": "/api/test/health",
+          "description": "Health check",
+          "response": "ApiResponse<String>"
+        }
+      ]
+    },
+    "adminDashboard": {
+      "basePath": "/api/admin/dashboard",
+      "description": "Admin dashboard overview",
+      "auth": "ROLE_ADMIN",
+      "endpoints": [
+        {
+          "method": "GET",
+          "path": "/api/admin/dashboard",
+          "description": "Get full admin dashboard data (stats, charts, recent activity)",
+          "response": "ApiResponse<Map>"
+        }
+      ]
+    },
+    "adminUsers": {
+      "basePath": "/api/admin/users",
+      "description": "User management (CRUD)",
+      "auth": "ROLE_ADMIN",
+      "endpoints": [
+        {
+          "method": "GET",
+          "path": "/api/admin/users",
+          "description": "List all users with optional filters",
+          "queryParams": {
+            "role": { "type": "Role", "required": false },
+            "active": { "type": "boolean", "required": false },
+            "page": { "type": "integer", "default": 0 },
+            "size": { "type": "integer", "default": 20 }
+          },
+          "response": "ApiResponse<Map> (paginated)"
+        },
+        {
+          "method": "GET",
+          "path": "/api/admin/users/{userId}",
+          "description": "Get user details by ID",
+          "pathParams": { "userId": "UUID" },
+          "response": "ApiResponse<Map>"
+        },
+        {
+          "method": "POST",
+          "path": "/api/admin/users",
+          "description": "Create a new user",
+          "requestBody": "CreateUserRequest",
+          "response": "ApiResponse<Map>",
+          "statusCode": 201
+        },
+        {
+          "method": "PUT",
+          "path": "/api/admin/users/{userId}",
+          "description": "Update user details",
+          "pathParams": { "userId": "UUID" },
+          "requestBody": "UpdateUserRequest",
+          "response": "ApiResponse<Map>"
+        },
+        {
+          "method": "DELETE",
+          "path": "/api/admin/users/{userId}",
+          "description": "Soft-delete a user",
+          "pathParams": { "userId": "UUID" },
+          "response": "ApiResponse<Map>"
+        },
+        {
+          "method": "PUT",
+          "path": "/api/admin/users/{userId}/reset-password",
+          "description": "Reset a user's password",
+          "pathParams": { "userId": "UUID" },
+          "requestBody": "ResetPasswordRequest",
+          "response": "ApiResponse<Map>"
+        }
+      ]
+    },
+    "adminProducts": {
+      "basePath": "/api/admin/products",
+      "description": "Product management (CRUD + barcodes)",
+      "auth": "ROLE_ADMIN",
+      "endpoints": [
+        {
+          "method": "GET",
+          "path": "/api/admin/products",
+          "description": "List all products with filters and search",
+          "queryParams": {
+            "category": { "type": "string", "required": false },
+            "active": { "type": "boolean", "required": false },
+            "search": { "type": "string", "required": false, "description": "Search by name or SKU" },
+            "page": { "type": "integer", "default": 0 },
+            "size": { "type": "integer", "default": 20 }
+          },
+          "response": "ApiResponse<Map> (paginated)"
+        },
+        {
+          "method": "GET",
+          "path": "/api/admin/products/{productId}",
+          "description": "Get product details by ID",
+          "pathParams": { "productId": "UUID" },
+          "response": "ApiResponse<Map>"
+        },
+        {
+          "method": "POST",
+          "path": "/api/admin/products",
+          "description": "Create a new product",
+          "requestBody": "ProductCreateRequest",
+          "response": "ApiResponse<Map>",
+          "statusCode": 201
+        },
+        {
+          "method": "PUT",
+          "path": "/api/admin/products/{productId}",
+          "description": "Update a product",
+          "pathParams": { "productId": "UUID" },
+          "requestBody": "UpdateProductRequest",
+          "response": "ApiResponse<Map>"
+        },
+        {
+          "method": "DELETE",
+          "path": "/api/admin/products/{productId}",
+          "description": "Delete a product",
+          "pathParams": { "productId": "UUID" },
+          "response": "ApiResponse<Map>"
+        },
+        {
+          "method": "POST",
+          "path": "/api/admin/products/{productId}/barcodes",
+          "description": "Add a barcode to a product",
+          "pathParams": { "productId": "UUID" },
+          "requestBody": "AddBarcodeRequest",
+          "response": "ApiResponse<Map>",
+          "statusCode": 201
+        },
+        {
+          "method": "DELETE",
+          "path": "/api/admin/products/{productId}/barcodes/{barcodeId}",
+          "description": "Remove a barcode from a product",
+          "pathParams": { "productId": "UUID", "barcodeId": "UUID" },
+          "response": "ApiResponse<Map>"
+        }
+      ]
+    },
+    "adminLocations": {
+      "basePath": "/api/admin/locations",
+      "description": "Location management (CRUD)",
+      "auth": "ROLE_ADMIN",
+      "endpoints": [
+        {
+          "method": "GET",
+          "path": "/api/admin/locations",
+          "description": "List all locations with filters",
+          "queryParams": {
+            "warehouseId": { "type": "UUID", "required": false },
+            "zone": { "type": "string", "required": false },
+            "type": { "type": "LocationType", "required": false },
+            "active": { "type": "boolean", "required": false },
+            "page": { "type": "integer", "default": 0 },
+            "size": { "type": "integer", "default": 50 }
+          },
+          "response": "ApiResponse<Map> (paginated)"
+        },
+        {
+          "method": "GET",
+          "path": "/api/admin/locations/{locationId}",
+          "description": "Get location details",
+          "pathParams": { "locationId": "UUID" },
+          "response": "ApiResponse<Map>"
+        },
+        {
+          "method": "POST",
+          "path": "/api/admin/locations",
+          "description": "Create a new location",
+          "requestBody": "LocationCreateRequest",
+          "response": "ApiResponse<Map>",
+          "statusCode": 201
+        },
+        {
+          "method": "PUT",
+          "path": "/api/admin/locations/{locationId}",
+          "description": "Update a location",
+          "pathParams": { "locationId": "UUID" },
+          "requestBody": "UpdateLocationRequest",
+          "response": "ApiResponse<Map>"
+        },
+        {
+          "method": "DELETE",
+          "path": "/api/admin/locations/{locationId}",
+          "description": "Delete a location",
+          "pathParams": { "locationId": "UUID" },
+          "response": "ApiResponse<Map>"
+        }
+      ]
+    },
+    "adminWarehouses": {
+      "basePath": "/api/admin/warehouses",
+      "description": "Warehouse management (CRUD)",
+      "auth": "ROLE_ADMIN",
+      "endpoints": [
+        {
+          "method": "GET",
+          "path": "/api/admin/warehouses",
+          "description": "List all warehouses",
+          "response": "ApiResponse<List<Map>>"
+        },
+        {
+          "method": "GET",
+          "path": "/api/admin/warehouses/{warehouseId}",
+          "description": "Get warehouse details",
+          "pathParams": { "warehouseId": "UUID" },
+          "response": "ApiResponse<Map>"
+        },
+        {
+          "method": "POST",
+          "path": "/api/admin/warehouses",
+          "description": "Create a new warehouse",
+          "requestBody": "CreateWarehouseRequest",
+          "response": "ApiResponse<Map>",
+          "statusCode": 201
+        },
+        {
+          "method": "PUT",
+          "path": "/api/admin/warehouses/{warehouseId}",
+          "description": "Update a warehouse",
+          "pathParams": { "warehouseId": "UUID" },
+          "requestBody": "UpdateWarehouseRequest",
+          "response": "ApiResponse<Map>"
+        },
+        {
+          "method": "DELETE",
+          "path": "/api/admin/warehouses/{warehouseId}",
+          "description": "Delete a warehouse",
+          "pathParams": { "warehouseId": "UUID" },
+          "response": "ApiResponse<Map>"
+        }
+      ]
+    },
+    "adminChariots": {
+      "basePath": "/api/admin/chariots",
+      "description": "Chariot/cart management (CRUD)",
+      "auth": "ROLE_ADMIN",
+      "endpoints": [
+        {
+          "method": "GET",
+          "path": "/api/admin/chariots",
+          "description": "List all chariots, optionally filter by status",
+          "queryParams": {
+            "status": { "type": "ChariotStatus", "required": false }
+          },
+          "response": "ApiResponse<List<Map>>"
+        },
+        {
+          "method": "POST",
+          "path": "/api/admin/chariots",
+          "description": "Create a new chariot",
+          "requestBody": "CreateChariotRequest",
+          "response": "ApiResponse<Map>",
+          "statusCode": 201
+        },
+        {
+          "method": "PUT",
+          "path": "/api/admin/chariots/{chariotId}",
+          "description": "Update chariot status",
+          "pathParams": { "chariotId": "UUID" },
+          "requestBody": "UpdateChariotRequest",
+          "response": "ApiResponse<Map>"
+        },
+        {
+          "method": "DELETE",
+          "path": "/api/admin/chariots/{chariotId}",
+          "description": "Delete a chariot",
+          "pathParams": { "chariotId": "UUID" },
+          "response": "ApiResponse<Map>"
+        }
+      ]
+    },
+    "adminTasks": {
+      "basePath": "/api/admin/tasks",
+      "description": "Admin task management (create, update, delete, filter)",
+      "auth": "ROLE_ADMIN",
+      "endpoints": [
+        {
+          "method": "GET",
+          "path": "/api/admin/tasks",
+          "description": "List all tasks with filters",
+          "queryParams": {
+            "type": { "type": "TransactionType", "required": false },
+            "status": { "type": "TransactionStatus", "required": false },
+            "assignedToId": { "type": "UUID", "required": false },
+            "createdById": { "type": "UUID", "required": false },
+            "page": { "type": "integer", "default": 0 },
+            "size": { "type": "integer", "default": 20 }
+          },
+          "response": "ApiResponse<Map> (paginated)"
+        },
+        {
+          "method": "POST",
+          "path": "/api/admin/tasks",
+          "description": "Create a task with line items",
+          "requestBody": "AdminCreateTaskRequest",
+          "response": "ApiResponse<Map>",
+          "statusCode": 201
+        },
+        {
+          "method": "PUT",
+          "path": "/api/admin/tasks/{taskId}",
+          "description": "Update a task (assign, change priority/status)",
+          "pathParams": { "taskId": "UUID" },
+          "requestBody": "UpdateTaskRequest",
+          "response": "ApiResponse<Map>"
+        },
+        {
+          "method": "DELETE",
+          "path": "/api/admin/tasks/{taskId}",
+          "description": "Delete a task",
+          "pathParams": { "taskId": "UUID" },
+          "response": "ApiResponse<Map>"
+        }
+      ]
+    },
+    "adminInventory": {
+      "basePath": "/api/admin/inventory",
+      "description": "Inventory overview, alerts, and adjustments",
+      "auth": "ROLE_ADMIN",
+      "endpoints": [
+        {
+          "method": "GET",
+          "path": "/api/admin/inventory/summary",
+          "description": "Get inventory summary with optional filters",
+          "queryParams": {
+            "category": { "type": "string", "required": false },
+            "lowStockOnly": { "type": "boolean", "required": false },
+            "page": { "type": "integer", "default": 0 },
+            "size": { "type": "integer", "default": 50 }
+          },
+          "response": "ApiResponse<Map> (paginated)"
+        },
+        {
+          "method": "GET",
+          "path": "/api/admin/inventory/alerts",
+          "description": "Get low stock alerts",
+          "response": "ApiResponse<List<Map>>"
+        },
+        {
+          "method": "GET",
+          "path": "/api/admin/inventory/product/{productId}",
+          "description": "Get inventory details for a specific product",
+          "pathParams": { "productId": "UUID" },
+          "response": "ApiResponse<Map>"
+        },
+        {
+          "method": "GET",
+          "path": "/api/admin/inventory/location/{locationId}",
+          "description": "Get inventory at a specific location",
+          "pathParams": { "locationId": "UUID" },
+          "response": "ApiResponse<Map>"
+        },
+        {
+          "method": "POST",
+          "path": "/api/admin/inventory/adjustment",
+          "description": "Create a stock adjustment",
+          "requestBody": "StockAdjustmentRequest",
+          "response": "ApiResponse<Map>",
+          "statusCode": 201
+        }
+      ]
+    },
+    "adminAiDecisions": {
+      "basePath": "/api/admin/ai-decisions",
+      "description": "View and override AI decisions",
+      "auth": "ROLE_ADMIN",
+      "endpoints": [
+        {
+          "method": "GET",
+          "path": "/api/admin/ai-decisions",
+          "description": "List all AI decisions with filters",
+          "queryParams": {
+            "decisionType": { "type": "AiDecisionType", "required": false },
+            "wasOverridden": { "type": "boolean", "required": false },
+            "page": { "type": "integer", "default": 0 },
+            "size": { "type": "integer", "default": 20 }
+          },
+          "response": "ApiResponse<Map> (paginated)"
+        },
+        {
+          "method": "PUT",
+          "path": "/api/admin/ai-decisions/{decisionId}/override",
+          "description": "Override an AI decision",
+          "pathParams": { "decisionId": "UUID" },
+          "requestBody": "AiDecisionOverrideRequest",
+          "response": "ApiResponse<Map>"
+        }
+      ]
+    },
+    "adminDiscrepancies": {
+      "basePath": "/api/admin/discrepancies",
+      "description": "View and resolve inventory discrepancies",
+      "auth": "ROLE_ADMIN",
+      "endpoints": [
+        {
+          "method": "GET",
+          "path": "/api/admin/discrepancies",
+          "description": "List all discrepancies with filters",
+          "queryParams": {
+            "resolved": { "type": "boolean", "required": false },
+            "issueType": { "type": "IssueType", "required": false },
+            "page": { "type": "integer", "default": 0 },
+            "size": { "type": "integer", "default": 20 }
+          },
+          "response": "ApiResponse<Map> (paginated)"
+        },
+        {
+          "method": "PUT",
+          "path": "/api/admin/discrepancies/{discrepancyId}/resolve",
+          "description": "Resolve a discrepancy",
+          "pathParams": { "discrepancyId": "UUID" },
+          "requestBody": "ResolveDiscrepancyRequest",
+          "response": "ApiResponse<Map>"
+        }
+      ]
+    },
+    "adminReports": {
+      "basePath": "/api/admin/reports",
+      "description": "Generate reports (stock movements, user productivity)",
+      "auth": "ROLE_ADMIN",
+      "endpoints": [
+        {
+          "method": "GET",
+          "path": "/api/admin/reports/stock-movements",
+          "description": "Get stock movement report for a date range",
+          "queryParams": {
+            "startDate": { "type": "string (ISO date)", "required": true },
+            "endDate": { "type": "string (ISO date)", "required": true },
+            "productId": { "type": "UUID", "required": false }
+          },
+          "response": "ApiResponse<Map>"
+        },
+        {
+          "method": "GET",
+          "path": "/api/admin/reports/user-productivity",
+          "description": "Get user productivity report for a date range",
+          "queryParams": {
+            "startDate": { "type": "string (ISO date)", "required": true },
+            "endDate": { "type": "string (ISO date)", "required": true },
+            "userId": { "type": "UUID", "required": false }
+          },
+          "response": "ApiResponse<Map>"
+        }
+      ]
+    },
+    "adminMonitoring": {
+      "basePath": "/api/admin/monitoring",
+      "description": "Real-time warehouse monitoring",
+      "auth": "ROLE_ADMIN",
+      "endpoints": [
+        {
+          "method": "GET",
+          "path": "/api/admin/monitoring/warehouse-status",
+          "description": "Get overall warehouse status",
+          "response": "ApiResponse<Map>"
+        }
+      ]
+    },
+    "adminAuditLogs": {
+      "basePath": "/api/admin/audit-logs",
+      "description": "View audit trail logs",
+      "auth": "ROLE_ADMIN",
+      "endpoints": [
+        {
+          "method": "GET",
+          "path": "/api/admin/audit-logs",
+          "description": "Get audit logs with filters",
+          "queryParams": {
+            "userId": { "type": "UUID", "required": false },
+            "action": { "type": "string", "required": false },
+            "entityType": { "type": "string", "required": false },
+            "entityId": { "type": "UUID", "required": false },
+            "startDate": { "type": "string (ISO datetime)", "required": false },
+            "endDate": { "type": "string (ISO datetime)", "required": false },
+            "page": { "type": "integer", "default": 0 },
+            "size": { "type": "integer", "default": 50 }
+          },
+          "response": "ApiResponse<Map> (paginated)"
+        },
+        {
+          "method": "GET",
+          "path": "/api/admin/audit-logs/user/{userId}",
+          "description": "Get audit history for a specific user",
+          "pathParams": { "userId": "UUID" },
+          "queryParams": {
+            "startDate": { "type": "string (ISO datetime)", "required": false },
+            "endDate": { "type": "string (ISO datetime)", "required": false }
+          },
+          "response": "ApiResponse<Map>"
+        },
+        {
+          "method": "GET",
+          "path": "/api/admin/audit-logs/entity/{entityType}/{entityId}",
+          "description": "Get audit history for a specific entity",
+          "pathParams": { "entityType": "string", "entityId": "UUID" },
+          "response": "ApiResponse<Map>"
+        }
+      ]
+    },
+    "products": {
+      "basePath": "/api/products",
+      "description": "Product read-only access (for all authenticated users)",
+      "auth": "product:read",
+      "endpoints": [
+        {
+          "method": "GET",
+          "path": "/api/products",
+          "description": "List all products",
+          "response": "ApiResponse<List<Map>>"
+        },
+        {
+          "method": "GET",
+          "path": "/api/products/{id}",
+          "description": "Get product by ID",
+          "pathParams": { "id": "UUID" },
+          "response": "ApiResponse<Map>"
+        },
+        {
+          "method": "GET",
+          "path": "/api/products/search",
+          "description": "Search products by name or SKU",
+          "queryParams": {
+            "query": { "type": "string", "required": true }
+          },
+          "response": "ApiResponse<List<Map>>"
+        }
+      ]
+    },
+    "locations": {
+      "basePath": "/api/locations",
+      "description": "Location read-only access",
+      "auth": "location:read",
+      "endpoints": [
+        {
+          "method": "GET",
+          "path": "/api/locations",
+          "description": "List all locations",
+          "response": "ApiResponse<List<Map>>"
+        },
+        {
+          "method": "GET",
+          "path": "/api/locations/{id}",
+          "description": "Get location by ID",
+          "pathParams": { "id": "UUID" },
+          "response": "ApiResponse<Map>"
+        },
+        {
+          "method": "GET",
+          "path": "/api/locations/search",
+          "description": "Search locations by code or zone",
+          "queryParams": {
+            "query": { "type": "string", "required": true }
+          },
+          "response": "ApiResponse<List<Map>>"
+        }
+      ]
+    },
+    "warehouses": {
+      "basePath": "/api/warehouses",
+      "description": "Warehouse read-only access",
+      "auth": "location:read",
+      "endpoints": [
+        {
+          "method": "GET",
+          "path": "/api/warehouses",
+          "description": "List all warehouses",
+          "response": "ApiResponse<List<Map>>"
+        },
+        {
+          "method": "GET",
+          "path": "/api/warehouses/{warehouseId}",
+          "description": "Get warehouse by ID",
+          "pathParams": { "warehouseId": "UUID" },
+          "response": "ApiResponse<Map>"
+        }
+      ]
+    },
+    "chariots": {
+      "basePath": "/api/chariots",
+      "description": "Chariot operations (assign, release, maintenance)",
+      "auth": "operation:read / operation:write",
+      "endpoints": [
+        {
+          "method": "GET",
+          "path": "/api/chariots",
+          "description": "List all available chariots",
+          "response": "ApiResponse<List<Map>>"
+        },
+        {
+          "method": "PUT",
+          "path": "/api/chariots/{id}/assign",
+          "description": "Assign a chariot to a user",
+          "pathParams": { "id": "UUID" },
+          "requestBody": "ChariotAssignRequest",
+          "response": "ApiResponse<Map>"
+        },
+        {
+          "method": "PUT",
+          "path": "/api/chariots/{id}/release",
+          "description": "Release a chariot",
+          "pathParams": { "id": "UUID" },
+          "response": "ApiResponse<Map>"
+        },
+        {
+          "method": "PUT",
+          "path": "/api/chariots/{id}/maintenance",
+          "description": "Set chariot to maintenance mode",
+          "pathParams": { "id": "UUID" },
+          "response": "ApiResponse<Map>"
+        }
+      ]
+    },
+    "tasks": {
+      "basePath": "/api/tasks",
+      "description": "Task viewing and management",
+      "auth": "operation:read / operation:write",
+      "endpoints": [
+        {
+          "method": "GET",
+          "path": "/api/tasks/my-tasks",
+          "description": "Get current user's assigned tasks",
+          "queryParams": {
+            "status": { "type": "string", "required": false }
+          },
+          "response": "ApiResponse<List<Map>>"
+        },
+        {
+          "method": "GET",
+          "path": "/api/tasks/{taskId}",
+          "description": "Get task details",
+          "pathParams": { "taskId": "UUID" },
+          "response": "ApiResponse<Map>"
+        },
+        {
+          "method": "GET",
+          "path": "/api/tasks",
+          "description": "List all tasks with optional status filter",
+          "queryParams": {
+            "status": { "type": "string", "required": false }
+          },
+          "response": "ApiResponse<List<Map>>"
+        },
+        {
+          "method": "POST",
+          "path": "/api/tasks/create",
+          "description": "Create a new task",
+          "requestBody": "CreateTaskRequest",
+          "response": "ApiResponse<Map>",
+          "statusCode": 201
+        },
+        {
+          "method": "PUT",
+          "path": "/api/tasks/{id}/assign",
+          "description": "Assign a task to a user",
+          "pathParams": { "id": "UUID" },
+          "requestBody": "TaskAssignRequest",
+          "response": "ApiResponse<Map>"
+        },
+        {
+          "method": "PUT",
+          "path": "/api/tasks/{id}/reassign",
+          "description": "Reassign a task to a different user",
+          "pathParams": { "id": "UUID" },
+          "requestBody": "TaskAssignRequest",
+          "response": "ApiResponse<Map>"
+        },
+        {
+          "method": "DELETE",
+          "path": "/api/tasks/{id}",
+          "description": "Delete a task",
+          "pathParams": { "id": "UUID" },
+          "response": "ApiResponse<String>"
+        }
+      ]
+    },
+    "operations": {
+      "basePath": "/api/operations",
+      "description": "Employee warehouse operations (start, execute, report, complete)",
+      "auth": "operation:write",
+      "endpoints": [
+        {
+          "method": "POST",
+          "path": "/api/operations/start",
+          "description": "Start a warehouse operation (picking, receipt, etc.)",
+          "requestBody": "StartOperationRequest",
+          "response": "ApiResponse<Map>"
+        },
+        {
+          "method": "POST",
+          "path": "/api/operations/execute-line",
+          "description": "Execute a single line item in an operation (scan + confirm)",
+          "requestBody": "ExecuteLineRequest",
+          "response": "ApiResponse<Map>"
+        },
+        {
+          "method": "POST",
+          "path": "/api/operations/report-issue",
+          "description": "Report an issue during an operation",
+          "requestBody": "ReportIssueRequest",
+          "response": "ApiResponse<Map>",
+          "statusCode": 201
+        },
+        {
+          "method": "POST",
+          "path": "/api/operations/{transactionId}/complete",
+          "description": "Complete or fail an operation",
+          "pathParams": { "transactionId": "UUID" },
+          "requestBody": "CompleteOperationRequest",
+          "response": "ApiResponse<Map>"
+        }
+      ]
+    },
+    "inventory": {
+      "basePath": "/api/inventory",
+      "description": "Inventory lookups",
+      "auth": "inventory:read",
+      "endpoints": [
+        {
+          "method": "GET",
+          "path": "/api/inventory/stock/product/{productId}",
+          "description": "Get stock info for a product",
+          "pathParams": { "productId": "string" },
+          "response": "ApiResponse<Map>"
+        },
+        {
+          "method": "GET",
+          "path": "/api/inventory/stock/search",
+          "description": "Search stock by SKU",
+          "queryParams": {
+            "sku": { "type": "string", "required": true }
+          },
+          "response": "ApiResponse<Map>"
+        },
+        {
+          "method": "GET",
+          "path": "/api/inventory/location/{locationId}",
+          "description": "Get contents of a location",
+          "pathParams": { "locationId": "string" },
+          "response": "ApiResponse<Map>"
+        }
+      ]
+    },
+    "stock": {
+      "basePath": "/api/stock",
+      "description": "Stock summary and ledger",
+      "auth": "inventory:read",
+      "endpoints": [
+        {
+          "method": "GET",
+          "path": "/api/stock/summary",
+          "description": "Get overall stock summary",
+          "response": "ApiResponse<Map>"
+        },
+        {
+          "method": "GET",
+          "path": "/api/stock/by-product/{id}",
+          "description": "Get stock entries for a product",
+          "pathParams": { "id": "UUID" },
+          "response": "ApiResponse<List<Map>>"
+        },
+        {
+          "method": "GET",
+          "path": "/api/stock/by-location/{id}",
+          "description": "Get stock entries at a location",
+          "pathParams": { "id": "UUID" },
+          "response": "ApiResponse<List<Map>>"
+        },
+        {
+          "method": "GET",
+          "path": "/api/stock/ledger",
+          "description": "Get full stock ledger",
+          "response": "ApiResponse<List<Map>>"
+        }
+      ]
+    },
+    "orders": {
+      "basePath": "/api/orders",
+      "description": "Purchase order management",
+      "auth": "operation:read / operation:write",
+      "endpoints": [
+        {
+          "method": "GET",
+          "path": "/api/orders",
+          "description": "List all orders (paginated, sortable)",
+          "queryParams": {
+            "page": { "type": "integer", "default": 0 },
+            "size": { "type": "integer", "default": 20 },
+            "sortBy": { "type": "string", "default": "idCommandeAchat" },
+            "direction": { "type": "string", "default": "asc", "enum": ["asc", "desc"] }
+          },
+          "response": "ApiResponse<Page<OrderResponse>>"
+        },
+        {
+          "method": "GET",
+          "path": "/api/orders/statut/{statut}",
+          "description": "List orders filtered by status",
+          "pathParams": { "statut": "string" },
+          "queryParams": {
+            "page": { "type": "integer", "default": 0 },
+            "size": { "type": "integer", "default": 20 },
+            "sortBy": { "type": "string", "default": "idCommandeAchat" },
+            "direction": { "type": "string", "default": "asc" }
+          },
+          "response": "ApiResponse<Page<OrderResponse>>"
+        },
+        {
+          "method": "GET",
+          "path": "/api/orders/{id}",
+          "description": "Get order by ID",
+          "pathParams": { "id": "string" },
+          "response": "ApiResponse<OrderResponse>"
+        },
+        {
+          "method": "POST",
+          "path": "/api/orders",
+          "description": "Create a new order",
+          "requestBody": "OrderRequest",
+          "response": "ApiResponse<OrderResponse>",
+          "statusCode": 201
+        },
+        {
+          "method": "PUT",
+          "path": "/api/orders/{id}",
+          "description": "Update an order",
+          "pathParams": { "id": "string" },
+          "requestBody": "OrderRequest",
+          "response": "ApiResponse<OrderResponse>"
+        },
+        {
+          "method": "DELETE",
+          "path": "/api/orders/{id}",
+          "description": "Delete an order",
+          "pathParams": { "id": "string" },
+          "response": "ApiResponse<String>"
+        }
+      ]
+    },
+    "discrepancies": {
+      "basePath": "/api/discrepancies",
+      "description": "Inventory discrepancy tracking",
+      "auth": "inventory:read / inventory:write",
+      "endpoints": [
+        {
+          "method": "GET",
+          "path": "/api/discrepancies",
+          "description": "List all discrepancies",
+          "response": "ApiResponse<List<Map>>"
+        },
+        {
+          "method": "GET",
+          "path": "/api/discrepancies/{id}",
+          "description": "Get discrepancy details",
+          "pathParams": { "id": "UUID" },
+          "response": "ApiResponse<Map>"
+        },
+        {
+          "method": "PUT",
+          "path": "/api/discrepancies/{id}/resolve",
+          "description": "Resolve a discrepancy",
+          "pathParams": { "id": "UUID" },
+          "requestBody": "ResolveDiscrepancyRequest",
+          "response": "ApiResponse<Map>"
+        },
+        {
+          "method": "GET",
+          "path": "/api/discrepancies/unresolved",
+          "description": "List unresolved discrepancies",
+          "response": "ApiResponse<List<Map>>"
+        }
+      ]
+    },
+    "aiDecisions": {
+      "basePath": "/api/ai-decisions",
+      "description": "AI decision viewing, approval, and override",
+      "auth": "operation:read / ADMIN|SUPERVISOR",
+      "endpoints": [
+        {
+          "method": "GET",
+          "path": "/api/ai-decisions",
+          "description": "List all AI decisions",
+          "response": "ApiResponse<List<Map>>"
+        },
+        {
+          "method": "GET",
+          "path": "/api/ai-decisions/{id}",
+          "description": "Get AI decision details",
+          "pathParams": { "id": "UUID" },
+          "response": "ApiResponse<Map>"
+        },
+        {
+          "method": "POST",
+          "path": "/api/ai-decisions/{id}/approve",
+          "description": "Approve an AI decision",
+          "pathParams": { "id": "UUID" },
+          "response": "ApiResponse<Map>"
+        },
+        {
+          "method": "POST",
+          "path": "/api/ai-decisions/{id}/override",
+          "description": "Override an AI decision with a new value",
+          "pathParams": { "id": "UUID" },
+          "requestBody": "AiDecisionOverrideRequest",
+          "response": "ApiResponse<Map>"
+        },
+        {
+          "method": "GET",
+          "path": "/api/ai-decisions/pending-review",
+          "description": "List AI decisions pending review",
+          "response": "ApiResponse<List<Map>>"
+        }
+      ]
+    },
+    "ai": {
+      "basePath": "/api/ai",
+      "description": "AI service proxy endpoints (forecast, storage, picking, simulation)",
+      "auth": "varies (see individual endpoints)",
+      "endpoints": [
+        {
+          "method": "GET",
+          "path": "/api/ai/health",
+          "description": "Check AI service health",
+          "auth": "operation:read",
+          "response": "ApiResponse<Map>"
+        },
+        {
+          "method": "GET",
+          "path": "/api/ai/model-info",
+          "description": "Get AI model information",
+          "auth": "operation:read",
+          "response": "ApiResponse<Map>"
+        },
+        {
+          "method": "POST",
+          "path": "/api/ai/predict",
+          "description": "Get demand forecast predictions",
+          "auth": "operation:read",
+          "requestBody": "AiForecastRequest",
+          "response": "ApiResponse<List<Map>>"
+        },
+        {
+          "method": "POST",
+          "path": "/api/ai/generate-forecast",
+          "description": "Generate a full forecast report",
+          "auth": "ROLE_ADMIN or ROLE_SUPERVISOR",
+          "requestBody": "AiForecastGenerateRequest",
+          "response": "ApiResponse<Map>"
+        },
+        {
+          "method": "POST",
+          "path": "/api/ai/assign-storage",
+          "description": "Get AI-recommended storage location",
+          "auth": "operation:read",
+          "requestBody": "AiStorageRequest",
+          "response": "ApiResponse<Map>"
+        },
+        {
+          "method": "POST",
+          "path": "/api/ai/optimize-picking",
+          "description": "Get AI-optimized picking route",
+          "auth": "operation:read",
+          "requestBody": "AiPickingRequest",
+          "response": "ApiResponse<Map>"
+        },
+        {
+          "method": "POST",
+          "path": "/api/ai/simulate",
+          "description": "Run a warehouse simulation",
+          "auth": "ROLE_ADMIN or ROLE_SUPERVISOR",
+          "requestBody": "AiSimulationRequest",
+          "response": "ApiResponse<Map>"
+        },
+        {
+          "method": "POST",
+          "path": "/api/ai/explain",
+          "description": "Get AI explanation for a prediction",
+          "auth": "operation:read",
+          "requestBody": "AiExplainRequest",
+          "response": "ApiResponse<Map>"
+        },
+        {
+          "method": "POST",
+          "path": "/api/ai/preparation-order",
+          "description": "Generate AI preparation order",
+          "auth": "ROLE_ADMIN or ROLE_SUPERVISOR",
+          "requestBody": "AiPreparationOrderRequest",
+          "response": "ApiResponse<Map>"
+        },
+        {
+          "method": "GET",
+          "path": "/api/ai/warehouse-state",
+          "description": "Get current AI warehouse state",
+          "auth": "operation:read",
+          "response": "ApiResponse<Map>"
+        },
+        {
+          "method": "POST",
+          "path": "/api/ai/reset-warehouse",
+          "description": "Reset AI warehouse state",
+          "auth": "ROLE_ADMIN",
+          "response": "ApiResponse<Map>"
+        }
+      ]
+    },
+    "dashboard": {
+      "basePath": "/api/dashboard",
+      "description": "Employee dashboard",
+      "auth": "dashboard:read",
+      "endpoints": [
+        {
+          "method": "GET",
+          "path": "/api/dashboard/employee",
+          "description": "Get employee dashboard data (my tasks, stats)",
+          "response": "ApiResponse<Map>"
+        }
+      ]
+    },
+    "monitoring": {
+      "basePath": "/api/monitoring",
+      "description": "Real-time monitoring for supervisors",
+      "auth": "dashboard:read",
+      "endpoints": [
+        {
+          "method": "GET",
+          "path": "/api/monitoring/active-operations",
+          "description": "List currently active operations",
+          "response": "ApiResponse<List<Map>>"
+        },
+        {
+          "method": "GET",
+          "path": "/api/monitoring/employee-status",
+          "description": "Get status of all employees",
+          "response": "ApiResponse<List<Map>>"
+        },
+        {
+          "method": "GET",
+          "path": "/api/monitoring/chariot-status",
+          "description": "Get status of all chariots",
+          "response": "ApiResponse<List<Map>>"
+        }
+      ]
+    },
+    "scan": {
+      "basePath": "/api/scan",
+      "description": "Barcode scanning",
+      "auth": "operation:read",
+      "endpoints": [
+        {
+          "method": "POST",
+          "path": "/api/scan/decode",
+          "description": "Decode a scanned barcode and return product/location info",
+          "requestBody": "ScanRequest",
+          "response": "ApiResponse<Map>"
+        }
+      ]
+    },
+    "users": {
+      "basePath": "/api/users",
+      "description": "User read-only access",
+      "auth": "user:read",
+      "endpoints": [
+        {
+          "method": "GET",
+          "path": "/api/users",
+          "description": "List all users",
+          "response": "ApiResponse<List<Map>>"
+        },
+        {
+          "method": "GET",
+          "path": "/api/users/{id}",
+          "description": "Get user by ID",
+          "pathParams": { "id": "UUID" },
+          "response": "ApiResponse<Map>"
+        },
+        {
+          "method": "GET",
+          "path": "/api/users/{id}/current-task",
+          "description": "Get user's currently assigned task",
+          "pathParams": { "id": "UUID" },
+          "response": "ApiResponse<Map>"
+        }
+      ]
+    },
+    "help": {
+      "basePath": "/api/help",
+      "description": "Operation help/instructions",
+      "auth": "operation:read",
+      "endpoints": [
+        {
+          "method": "GET",
+          "path": "/api/help/operations/{operationType}",
+          "description": "Get step-by-step help for an operation type",
+          "pathParams": { "operationType": "string (e.g. RECEIPT, PICKING, TRANSFER, DELIVERY)" },
+          "response": "ApiResponse<Map>"
+        }
+      ]
+    }
+  },
+  "summary": {
+    "totalControllers": 33,
+    "totalEndpoints": 103,
+    "publicEndpoints": 7,
+    "adminOnlyEndpoints": 51,
+    "adminOrSupervisorEndpoints": 5,
+    "permissionBasedEndpoints": 40
+  }
+}
