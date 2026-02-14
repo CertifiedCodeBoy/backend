@@ -24,6 +24,7 @@ COPY --from=build /app/target/*.jar app.jar
 ENV PORT=8080
 
 EXPOSE ${PORT}
+EXPOSE 10000
 
 # JVM tuning for Render free tier (512MB RAM)
 ENTRYPOINT ["java", \

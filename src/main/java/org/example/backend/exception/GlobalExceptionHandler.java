@@ -58,6 +58,26 @@ public class GlobalExceptionHandler {
                                 .body(ApiResponse.error(ex.getMessage(), "INVALID_OPERATION"));
         }
 
+        @ExceptionHandler(InsufficientStockException.class)
+        public ResponseEntity<ApiResponse<Void>> handleInsufficientStock(
+                        InsufficientStockException ex, WebRequest request) {
+
+                log.error("Insufficient stock: {}", ex.getMessage());
+
+                return ResponseEntity.status(HttpStatus.CONFLICT)
+                                .body(ApiResponse.error(ex.getMessage(), "INSUFFICIENT_STOCK"));
+        }
+
+        @ExceptionHandler(org.springframework.orm.ObjectOptimisticLockingFailureException.class)
+        public ResponseEntity<ApiResponse<Void>> handleOptimisticLock(
+                        org.springframework.orm.ObjectOptimisticLockingFailureException ex, WebRequest request) {
+
+                log.error("Concurrent modification detected: {}", ex.getMessage());
+
+                return ResponseEntity.status(HttpStatus.CONFLICT)
+                                .body(ApiResponse.error("Concurrent modification detected. Please retry.", "OPTIMISTIC_LOCK_ERROR"));
+        }
+
         @ExceptionHandler(BadCredentialsException.class)
         public ResponseEntity<ApiResponse<Void>> handleBadCredentials(
                         BadCredentialsException ex, WebRequest request) {

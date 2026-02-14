@@ -14,6 +14,7 @@ import org.example.backend.entity.TransactionLine;
 import org.example.backend.entity.User;
 import org.example.backend.enums.IssueType;
 import org.example.backend.enums.TransactionStatus;
+import org.example.backend.enums.TransactionType;
 import org.example.backend.exception.ResourceNotFoundException;
 import org.example.backend.repository.ChariotRepository;
 import org.example.backend.repository.ProductBarcodeRepository;
@@ -45,6 +46,10 @@ public class EmployeeWorkflowService {
     private final TaskDiscrepancyRepository taskDiscrepancyRepository;
     private final UserRepository userRepository;
     private final ChariotRepository chariotRepository;
+    private final ReceiptService receiptService;
+    private final TransferService transferService;
+    private final PickingService pickingService;
+    private final DeliveryService deliveryService;
 
     @Transactional(readOnly = true)
     public List<Map<String, Object>> getMyTasks(String username, String statusFilter) {
@@ -121,11 +126,15 @@ public class EmployeeWorkflowService {
 
         validateScannedBarcode(line, request.getProductBarcode());
 
+        // Process actual stock movement based on transaction type
+        User performer = getUserByUsername(username);
+        processStockMovement(task, line, performer);
+
         Map<String, Object> response = new HashMap<>();
         response.put("lineNumber", line.getLineNumber());
         response.put("status", "COMPLETED");
         response.put("product", toProductPayload(line.getProduct()));
-        response.put("message", "Product scanned successfully");
+        response.put("message", "Line processed and stock updated successfully");
         return response;
     }
 
@@ -193,6 +202,21 @@ public class EmployeeWorkflowService {
         dashboard.put("tasksInProgress", inProgress);
         dashboard.put("tasksCompleted", completed);
         return dashboard;
+    }
+
+    /**
+     * Dispatch stock movement to the appropriate operation service based on transaction type.
+     */
+    private void processStockMovement(Transaction transaction, TransactionLine line, User performer) {
+        switch (transaction.getType()) {
+            case RECEIPT -> receiptService.processReceiptLine(transaction, line, performer);
+            case TRANSFER -> transferService.processTransferLine(transaction, line, performer);
+            case PICKING -> pickingService.processPickingLine(transaction, line, performer);
+            case DELIVERY -> deliveryService.processDeliveryLine(transaction, line, performer);
+            case ADJUSTMENT -> {
+                // Adjustments are handled separately via admin endpoints
+            }
+        }
     }
 
     private void validateScannedBarcode(TransactionLine line, String scannedBarcode) {

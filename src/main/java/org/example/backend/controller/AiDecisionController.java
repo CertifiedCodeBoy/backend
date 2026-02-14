@@ -47,7 +47,7 @@ public class AiDecisionController {
     }
 
     @PostMapping("/{id}/approve")
-    @PreAuthorize("hasAuthority('operation:write')")
+    @PreAuthorize("hasAnyRole('ADMIN', 'SUPERVISOR')")
     public ResponseEntity<ApiResponse<Map<String, Object>>> approveDecision(
             @PathVariable UUID id,
             Authentication authentication) {
@@ -68,7 +68,7 @@ public class AiDecisionController {
     }
 
     @PostMapping("/{id}/override")
-    @PreAuthorize("hasAuthority('operation:write')")
+    @PreAuthorize("hasAnyRole('ADMIN', 'SUPERVISOR')")
     public ResponseEntity<ApiResponse<Map<String, Object>>> overrideDecision(
             @PathVariable UUID id,
             @Valid @RequestBody AiDecisionOverrideRequest request,

@@ -156,6 +156,12 @@
                 <artifactId>spring-boot-starter-actuator</artifactId>
             </dependency>
 
+            <!-- AOP for audit logging -->
+            <dependency>
+                <groupId>org.springframework.boot</groupId>
+                <artifactId>spring-boot-starter-aop</artifactId>
+            </dependency>
+
             <!-- Test Dependencies -->
             <dependency>
                 <groupId>org.springframework.boot</groupId>
